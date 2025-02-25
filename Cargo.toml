@@ -1,6 +1,21 @@
-[package]
-name = "tecc"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "lattice",
+    "harrington",
+]
+resolver = "2"
 
-[dependencies]
+[workspace.package]
+version = "0.1.0"
+description = "Topological Error Correcting Codes"
+authors = ["Haadi Khan", "Kevin Sullivan", "Alec Riso", "Matthew Can"]
+edition = "2024"
+rust-version = "1.85.0"
+
+[workspace.dependencies]
+lattice = { path = "lattice" }
+
+ndarray = {version = "0.16.1", features = ["rayon"]}
+nalgebra = "0.33.2"
+rayon = "1.10.0"
+itertools = "0.13.0"
