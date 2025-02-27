@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "driver"
+version = "0.1.0"
+dependencies = [
+ "harrington",
+]
+
+[[package]]
 name = "harrington"
 version = "0.1.0"
 
