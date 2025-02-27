@@ -1,0 +1,10 @@
+[package]
+name = "driver"
+version.workspace = true
+description.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+harrington.workspace = true
