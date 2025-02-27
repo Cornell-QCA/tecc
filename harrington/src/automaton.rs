@@ -1,0 +1,7 @@
+struct Automaton {
+
+}
+
+struct Memory {
+
+}
