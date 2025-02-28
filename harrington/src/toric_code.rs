@@ -1,13 +1,13 @@
 pub enum Location {
-    NORTH,
-    SOUTH,
-    EAST,
-    WEST,
-    NORTH_EAST,
-    SOUTH_WEST,
-    NORTH_WEST,
-    SOUTH_EAST,
-    CENTER,
+    NORTH = 1,
+    SOUTH = 2,
+    EAST = 3,
+    WEST = 4,
+    NORTH_EAST = 5,
+    SOUTH_WEST = 6,
+    NORTH_WEST = 7,
+    SOUTH_EAST = 8,
+    CENTER = 9,
 }
 
 impl Location {
