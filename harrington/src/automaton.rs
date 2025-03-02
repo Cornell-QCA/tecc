@@ -9,6 +9,7 @@ type Point = (i32, i32);
 ///
 /// TODO: Maybe these are supposed to be arrays instead of vectors? The authors used vectors but
 ///       more or less treated them like arrays lol
+/// NOTE: From what I can see, they should just be arrays
 #[derive(Clone, Debug)]
 struct Memory {
     age: i32,
@@ -45,14 +46,17 @@ impl Memory {
     }
 }
 
+/// This is the same a a processor, just different naming convention
 #[derive(Clone, Debug)]
 struct Automaton {
-    hiearchy_depth: i32,
+    // TODO: I think there should also be a Point field
+    hierarchy_depth: i32,
     f_c: f64,
     f_n: f64,
     memory: Vec<Memory>,
     neighbors: Vec<Automaton>,
-    qubits: Vec<Qubit>,
+    qubits: Vec<Qubit>, // Is this needed? I think this is jut the adjacent qubits. It may be
+    // helpful if it is an array of references to the adjacent qubits
     syndrome: [i32; 9],
 }
 

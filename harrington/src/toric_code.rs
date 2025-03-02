@@ -1,3 +1,6 @@
+use crate::{}
+/// TODO: import a random crate
+
 pub enum Location {
     NORTH = 1,
     SOUTH = 2,
@@ -24,4 +27,40 @@ impl Location {
             _ => Location::CENTER,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+struct ToricCode {
+    todo!()
+    // size/L 
+    // vertices/processors
+    // edges/qubits
+    // syndroms
+    // p - phase flip rate
+    // q - measurement error rate
+    // TODO: do we need bit flip rate?
+}
+
+impl ToricCode {
+    pub fn new() -> Self {
+        todo!()
+    }
+
+    pub fn apply_random_errors(&mut self) {
+        todo!()
+    }
+
+    pub fn measure_syndromes(&mut self) {
+        todo!() // star, plaquette, or both?
+    }
+
+    pub fn update_processors(&mut self) {
+        todo!()
+    }
+    
+    pub fn apply_correction_rules(&mut self) {
+        todo!()
+    }
+
+    // should the time step function be here?
 }
