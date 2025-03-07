@@ -1,16 +1,22 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Qubit {
-    bit: i32
+    bit: bool,
+    spin: bool
 }
 
 impl Qubit {
     pub fn new() -> Self {
         Self {
-            bit: 0
+            bit: false,
+            spin: false
         }
     }
 
-    pub fn flip(&mut self) {
-        self.bit = (self.bit + 1) % 2;
+    pub fn flip_bit(&mut self) {
+        self.bit = !self.bit;
+    }
+
+    pub fn flip_spin(&mut self) {
+        self.spin = !self.spin;
     }
 }

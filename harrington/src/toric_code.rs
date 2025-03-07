@@ -1,5 +1,3 @@
-use crate::{}
-/// TODO: import a random crate
 
 pub enum Location {
     NORTH = 1,
@@ -31,7 +29,6 @@ impl Location {
 
 #[derive(Clone, Debug)]
 struct ToricCode {
-    todo!()
     // size/L 
     // vertices/processors
     // edges/qubits
