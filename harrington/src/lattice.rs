@@ -172,17 +172,23 @@ pub struct MiddleLattice<'colony_ref> {
     new_count_signal: [bool; 8],
     flip_signal: [bool; 8],
     new_flip_signal: [bool; 8],
+
+    //Think we need list of neighbors for implementing higher level harrington rules easily
+    //Could make specific higher level 'edge' objects to link these but we don't need qubit info stored btw 
+    //higher level colonies
+    neighbor_colonies: [LatticeId; 8],
 }
 
 impl <'colony_ref> MiddleLattice<'colony_ref> {
-    pub fn new(supercolony: LatticeId) -> Self {
+    pub fn new(supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
         Self {
             supercolony,
             colonies: Vec::new(),
             count_signal: [false; 9],
             new_count_signal: [false; 9],
             flip_signal: [false; 9],
-            new_flip_signal: [false; 9]
+            new_flip_signal: [false; 9],
+            neighbor_colonies: neighbors
         }
     }
 
@@ -219,10 +225,11 @@ pub struct BaseLattice<'automata_ref> {
     new_count_signal: [bool; 8],
     flip_signal: [bool; 8],
     new_flip_signal: [bool; 8],
+    neighbor_colonies: [LatticeId; 8],
 }
 
 impl<'automata_ref> BaseLattice<'automata_ref> {
-    pub fn new(supercolony: LatticeId) -> Self {
+    pub fn new(supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
         Self {
             supercolony,
             primary: HashMap::new(),
@@ -232,6 +239,7 @@ impl<'automata_ref> BaseLattice<'automata_ref> {
             new_count_signal: [false; 9],
             flip_signal: [false; 9],
             new_flip_signal: [false; 9]
+            neighbor_colonies: neighbors
         }
     }
 
