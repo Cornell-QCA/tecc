@@ -1,18 +1,17 @@
 use crate::qubit::Qubit;
 
-type Point = (i32, i32);
-
+pub type Point = (i32, i32);
 
 pub enum Syndrome {
-    NORTH = 1,
-    SOUTH = 2,
-    EAST = 3,
-    WEST = 4,
-    NORTH_EAST = 5,
-    SOUTH_WEST = 6,
-    NORTH_WEST = 7,
-    SOUTH_EAST = 8,
-    CENTER = 9,
+    North = 1,
+    South = 2,
+    East = 3,
+    West = 4,
+    NorthEast = 5,
+    SouthWest = 6,
+    NorthWest = 7,
+    SouthEast = 8,
+    Center = 9,
 }
 
 #[derive(Clone, Debug)]
@@ -24,7 +23,7 @@ pub struct Automaton<'clock> {
 
 impl<'clock> Automaton<'clock> {
     // TODO: Consider which of these need to be public
-    pub fn new(age: &'clock, address: Point) -> Self {
+    pub fn new(age: &'clock u32, address: Point) -> Self {
         Self {
             age,
             address,

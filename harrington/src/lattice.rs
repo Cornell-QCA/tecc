@@ -2,19 +2,21 @@ use crate::automaton::{Automaton, Point};
 use slotmap::SlotMap;
 use std::collections::HashMap;
 
-trait Lattice {
+pub trait Lattice<'lat_id, 'lat> {
     // TODO: add to this trait, or perhaps just keep it as a state marker
     // I did not put add_colony and remove_colony here because they are not applicable to BaseLattice
+    fn insert_lattice_to_store(self, lattice_manager: &mut LatticeManager) -> &'lat_id LatticeId;
+    fn get_lattice_from_store(self, lattice_manager: &mut LatticeManager) -> &'lat Self;
 }
 
 // TODO: Consider which functions need to be public
-trait HarringtonRules<T: Lattice> {
+pub trait HarringtonRules<'lat_id, 'lat, T: Lattice<'lat_id, 'lat>> {
     // TODO: what should these return?
     // should it put the values in the lattices or return a matrix of syndromes?
-    pub fn compute_syndromes(lattice: T) -> (); 
-    pub fn apply_corrections(lattice: T) -> ();
-    pub fn apply_random_error(lattice: T) -> ();  
-    pub fn update_automata(lattice: T) -> ();
+    fn compute_syndromes(lattice: T) -> (); 
+    fn apply_corrections(lattice: T) -> ();
+    fn apply_random_error(lattice: T) -> ();  
+    fn update_automata(lattice: T) -> ();
 }
 
 
@@ -23,15 +25,20 @@ slotmap::new_key_type! {
 }
 
 slotmap::new_key_type! {
-    struct QubitKey;
+    pub struct QubitKey;
 }
 
 slotmap::new_key_type! {
-    struct AutomatonId;
+    pub struct AutomatonId;
 }
 
+slotmap::new_key_type! {
+    pub struct EdgeId;
+}
+
+
 /// LatticeManager is the "higher level" lattice structure.
-pub struct LatticeManager<'clock, 'automata_ref> {
+pub struct LatticeManager<'clock, 'lat_id, 'aut_id> {
     work_period: u32,
     clock: u32, // will send a reference w/ 'clock to automata
     colony_size: u32,
@@ -40,20 +47,19 @@ pub struct LatticeManager<'clock, 'automata_ref> {
     neighbor_threshold: f64,
 
     // Owns the lattices
-    store: SlotMap<LatticeId, Lattice<'clock, 'automata_ref>>,
+    top_store: SlotMap<LatticeId, TopLattice<'clock, 'lat_id>>, 
+    mid_store: SlotMap<LatticeId, MiddleLattice<'clock, 'lat_id>>, 
+    base_store: SlotMap<LatticeId, BaseLattice<'clock, 'aut_id>>, 
+    // Owns the Edges
+    edges: SlotMap<EdgeId, Edge<'aut_id>>,
     // Owns the Automata
-    automata_store: SlotMap<AutomatonId, Automaton<'clock>>,
-    // Owns the edges
-    primary: HashMap<&Automaton<'clock>, Vec<Edge<'automata_ref, 'clock>>>, // I think that is the
-    // right syntax for references to automata, though there might need to be a lifetime. I'm not
-    // sure if this removes the need from some other lifetimes.
-    dual: HashMap<&Automaton<'clock>, Vec<Edge<'automata_ref, 'clock>>>,
+    primary: HashMap<Automaton<'clock>, Vec<Edge<'aut_id>>>, 
+    dual: HashMap<Automaton<'clock>, Vec<Edge<'aut_id>>>,
 }
 
 // TODO: I now have the LatticeManager owning everything, to get around boundaries between
-// BaseLattice's. This may require refactoring some of the other code below with the lattices,
-// edges, references, and lifetimes.
-impl<'clock, 'automata_ref> LatticeManager<'clock, 'automata_ref> {
+// BaseLattice's. 
+impl<'clock, 'lat_id, 'aut_id> LatticeManager<'clock, 'lat_id, 'aut_id> {
     pub fn new(
         colony_size: u32,
         colony_degree: u32,
@@ -61,7 +67,12 @@ impl<'clock, 'automata_ref> LatticeManager<'clock, 'automata_ref> {
         cell_threshold: f64,
         neighbor_threshold: f64,
     ) -> Self {
-        let store: SlotMap<LatticeId, Lattice<'clock, 'automata_ref>> = SlotMap::with_key();
+        let top_store: SlotMap<LatticeId, TopLattice> = SlotMap::with_key();
+        let mid_store: SlotMap<LatticeId, MiddleLattice> = SlotMap::with_key();
+        let base_store: SlotMap<LatticeId, BaseLattice> = SlotMap::with_key();
+        let edges: SlotMap<EdgeId, Edge<'aut_id>> = SlotMap::with_key();
+        let primary = HashMap::new();
+        let dual = HashMap::new();
         // TODO: create automata_store, primary, and dual
         // TODO: Build the lattice and add it to the store.
 
@@ -72,37 +83,45 @@ impl<'clock, 'automata_ref> LatticeManager<'clock, 'automata_ref> {
             colony_degree,
             cell_threshold,
             neighbor_threshold,
-            store,
+            top_store,
+            mid_store,
+            base_store,
+            edges,
             primary,
             dual,
         }
     }
 
+
     // There should only be one of these
     pub fn _create_top_lattice(&mut self) {
-        let id = self.store.insert(
-            TopLattice::new() 
-        );
+        todo!()
+        // let id = self.insert_lattice_to_store(
+        //     TopLattice::new() 
+        // );
     }
     
     // Example method for building new lattice
     pub fn _create_middle_lattice(&mut self, _supercolony: LatticeId) -> LatticeId {
+        todo!()
         // Adds the new lattice to the LatticeManager
         // Note that I think id is assigned the valued given by vacant_key()
-        let id = self.store.insert(
-            MiddleLattice::new(store.vacant_key()) 
-        );
-        // Adds the new lattice as a child colony of the given supercolony
-        self.store[_supercolony].colonies.push(id);
-        id
+        // let id = MiddleLattice::insert_lattice_to_store(
+        //     MiddleLattice::new(store.vacant_key()),
+        //     &mut self, 
+        // );
+        // // Adds the new lattice as a child colony of the given supercolony
+        // self.store[_supercolony].colonies.push(id);
+        // id
     }
 
     pub fn _create_base_lattice(&mut self, _supercolony: LatticeId) -> LatticeId {
-        let id = self.store.insert(
-            BaseLattice::new(store.vacant_key()) 
-        );
-        self.store[_supercolony].colonies.push(id);
-        id
+        todo!()
+        // let id = self.insert_lattice_to_store(
+        //     BaseLattice::new(store.vacant_key()) 
+        // );
+        // BaseLattice::get_lattice_from_store(_supercolony).colonies.push(id);
+        // id
     }
 
 
@@ -111,10 +130,10 @@ impl<'clock, 'automata_ref> LatticeManager<'clock, 'automata_ref> {
         todo!()
     }
 
-    pub fn add_automaton(
+    pub fn _add_automaton(
         &mut self,
         aut: Automaton<'clock>,
-        edges: Vec<Edge<'automata_ref, 'clock>>
+        edges: Vec<Edge<'aut_id>>
     ) {
        todo!() 
     }
@@ -125,8 +144,9 @@ impl<'clock, 'automata_ref> LatticeManager<'clock, 'automata_ref> {
 // Harrington originally. These are the fields that count the errors and determine if the value
 // is greater than the cell cell_threshold, which is a value stored in LatticeManager.
 // Perhaps they should have age, or we should remove the lifetimes for Top and Middle
-pub struct TopLattice<'colony_ref> {
-    colonies: Vec<LatticeId>,
+pub struct TopLattice<'clock, 'lat_id> {
+    age: &'clock u32,
+    colonies: Vec<&'lat_id LatticeId>,
 
     count_signal: [bool; 8], 
     new_count_signal: [bool; 8],
@@ -134,39 +154,60 @@ pub struct TopLattice<'colony_ref> {
     new_flip_signal: [bool; 8],
 }
 
-impl TopLattice<'colony_ref> {
-    pub fn new() -> Self {
+impl<'clock, 'lat_id> TopLattice<'clock, 'lat_id> {
+    pub fn new(age: &'clock u32) -> Self {
         Self {
+            age,
             colonies: Vec::new(),
-            count_signal: [false; 9],
-            new_count_signal: [false; 9],
-            flip_signal: [false; 9],
-            new_flip_signal: [false; 9]
+            count_signal: [false; 8],
+            new_count_signal: [false; 8],
+            flip_signal: [false; 8],
+            new_flip_signal: [false; 8]
         }
     }
 
-    pub fn add_colony(&mut self, id: LatticeId) {
+    pub fn add_colony(&mut self, id: &'lat_id LatticeId) {
         self.colonies.push(id);
     }
 
-    pub fn remove_colony(&mut self, id: LatticeId) {
-        self.colonies.pop(id);
+    pub fn remove_colony(&mut self, id: &'lat_id LatticeId) {
+        if let Some(index) = self.colonies.iter().position(|colony| *colony == id) {
+            self.colonies.remove(index);
+        }
     }
 }
 
-impl Lattice for TopLattice {
-    todo!();
+impl<'clock, 'lat_id, 'lat> Lattice<'lat_id, 'lat> for TopLattice<'clock, 'lat_id> {
+    fn insert_lattice_to_store(self, _lattice_manager: &mut LatticeManager) -> &'lat_id LatticeId {
+        todo!()
+    }
+    fn get_lattice_from_store(self, _lattice_manager: &mut LatticeManager) -> &'lat Self {
+        todo!()
+    }
 }
 
-impl HarringtonRules for TopLattice {
-    todo!(); // This will include the methods for modifying count_signal, flip_signal, and their
+impl<'clock, 'lat_id, 'lat> HarringtonRules<'lat_id, 'lat, TopLattice<'clock, 'lat_id>> for TopLattice<'clock, 'lat_id> {
+    fn compute_syndromes(_lattice: TopLattice) -> () {
+        todo!()
+    } 
+    fn apply_corrections(_lattice: TopLattice) -> () {
+        todo!()
+    }
+    fn apply_random_error(_lattice: TopLattice) -> () {
+        todo!()
+    }  
+    fn update_automata(_lattice: TopLattice) -> () {
+        todo!()
+    }
+    // This will include the methods for modifying count_signal, flip_signal, and their
     // new variants
 }
 
 
-pub struct MiddleLattice<'colony_ref> {
-    supercolony: LatticeId,
-    colonies: Vec<LatticeId>,
+pub struct MiddleLattice<'clock, 'lat_id> {
+    age: &'clock u32,
+    supercolony: &'lat_id LatticeId,
+    colonies: Vec<&'lat_id LatticeId>,
 
     count_signal: [bool; 8], 
     new_count_signal: [bool; 8],
@@ -176,50 +217,71 @@ pub struct MiddleLattice<'colony_ref> {
     //Think we need list of neighbors for implementing higher level harrington rules easily
     //Could make specific higher level 'edge' objects to link these but we don't need qubit info stored btw 
     //higher level colonies
-    neighbor_colonies: [LatticeId; 8],
+    neighbor_colonies: [&'lat_id LatticeId; 8],
 }
 
-impl <'colony_ref> MiddleLattice<'colony_ref> {
-    pub fn new(supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
+impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
+    pub fn new(age: &'clock u32, supercolony: &'lat_id LatticeId, neighbors: [&'lat_id LatticeId; 8]) -> Self {
         Self {
+            age,
             supercolony,
             colonies: Vec::new(),
-            count_signal: [false; 9],
-            new_count_signal: [false; 9],
-            flip_signal: [false; 9],
-            new_flip_signal: [false; 9],
+            count_signal: [false; 8],
+            new_count_signal: [false; 8],
+            flip_signal: [false; 8],
+            new_flip_signal: [false; 8],
             neighbor_colonies: neighbors
         }
     }
 
-    pub fn add_colony(&mut self, id: LatticeId) {
+    pub fn add_colony(&mut self, id: &'lat_id LatticeId) {
         self.colonies.push(id);
     }
 
-    pub fn remove_colony(&mut self, id: LatticeId) {
-        self.colonies.pop(id);
+    pub fn remove_colony(&mut self, id: &'lat_id LatticeId) {
+        if let Some(index) = self.colonies.iter().position(|colony| *colony == id) {
+            self.colonies.remove(index);
+        }
     }
 }
 
-impl Lattice for MiddleLattice {
-    todo!();
+impl<'clock, 'lat_id, 'lat> Lattice<'lat_id, 'lat> for MiddleLattice<'clock, 'lat_id> {
+    fn insert_lattice_to_store(self, _lattice_manager: &mut LatticeManager) -> &'lat_id LatticeId {
+        todo!()
+    }
+    fn get_lattice_from_store(self, _lattice_manager: &mut LatticeManager) -> &'lat Self {
+        todo!()
+    }
 }
 
-impl HarringtonRules for MiddleLattice {
-    todo!(); // This will include the methods for modifying count_signal, flip_signal, and their
+impl<'clock, 'lat_id, 'lat> HarringtonRules<'lat_id, 'lat, MiddleLattice<'clock, 'lat_id>> for MiddleLattice<'clock, 'lat_id> {
+    fn compute_syndromes(_lattice: MiddleLattice<'clock, 'lat_id>) -> () {
+        todo!()
+    } 
+    fn apply_corrections(_lattice: MiddleLattice<'clock, 'lat_id>) -> () {
+        todo!()
+    }
+    fn apply_random_error(_lattice: MiddleLattice<'clock, 'lat_id>) -> () {
+        todo!()
+    }  
+    fn update_automata(_lattice: MiddleLattice<'clock, 'lat_id>) -> () {
+        todo!()
+    }
+    // This will include the methods for modifying count_signal, flip_signal, and their
     // new variants
 }
 
 
-pub struct BaseLattice<'automata_ref> {
+pub struct BaseLattice<'clock, 'aut_id> {
+    age: &'clock u32,
     supercolony: LatticeId,
     // Primary and Dual are now maps from points (indexed relative to that specific lattice) to
     // (AutomataKey) automata, which are owned by LatticeManager. This is to solve the issue of who owns the
     // edges that connect automata owned by separate lattices.
     //
     // The Points are indexed with respect to the individual BaseLattice
-    primary: HashMap<Point, &'automata_ref AutomatonId>,
-    dual: HashMap<Point, &'automata_ref AutomatonId>,
+    primary: HashMap<Point, &'aut_id AutomatonId>,
+    dual: HashMap<Point, &'aut_id AutomatonId>,
 
     count_signal: [bool; 8], 
     new_count_signal: [bool; 8],
@@ -228,68 +290,85 @@ pub struct BaseLattice<'automata_ref> {
     neighbor_colonies: [LatticeId; 8],
 }
 
-impl<'automata_ref> BaseLattice<'automata_ref> {
-    pub fn new(supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
+impl <'clock, 'aut_id>BaseLattice<'clock, 'aut_id> {
+    pub fn new(age: &'clock u32, supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
         Self {
+            age,
             supercolony,
             primary: HashMap::new(),
             dual: HashMap::new(),
 
-            count_signal: [false; 9],
-            new_count_signal: [false; 9],
-            flip_signal: [false; 9],
-            new_flip_signal: [false; 9]
+            count_signal: [false; 8],
+            new_count_signal: [false; 8],
+            flip_signal: [false; 8],
+            new_flip_signal: [false; 8],
             neighbor_colonies: neighbors
         }
     }
 
-    pub fn add_primary_point<'automata_ref>(&mut self, point: Point, aut: &'automata_ref AutomatonId) {
-        self.primary.push(point, aut);
+    pub fn add_primary_point(&mut self, point: Point, aut: &'aut_id AutomatonId) {
+        self.primary.insert(point, aut);
     }
 
-    pub fn add_dual_point<'automata_ref>(&mut self, point: Point, aut: &'automata_ref AutomatonId) {
-        self.dual.push(point, aut);
+    pub fn add_dual_point(&mut self, point: Point, aut: &'aut_id AutomatonId) {
+        self.dual.insert(point, aut);
     }
 }
 
-impl Lattice for BaseLattice {
-    todo!();
+impl<'clock, 'aut_id, 'lat_id, 'lat> Lattice<'lat_id, 'lat> for BaseLattice<'clock, 'aut_id> {
+    fn insert_lattice_to_store(self, _lattice_manager: &mut LatticeManager) -> &'lat_id LatticeId {
+        todo!()
+    }
+    fn get_lattice_from_store(self, _lattice_manager: &mut LatticeManager) -> &'lat Self {
+        todo!()
+    }
 }
 
-impl HarringtonRules for BaseLattice {
-    todo!(); // This will include the methods for modifying count_signal, flip_signal, and their
+impl <'clock, 'aut_id, 'lat_id, 'lat>HarringtonRules<'lat_id, 'lat, BaseLattice<'clock, 'aut_id>> for BaseLattice<'clock, 'aut_id> {
+    fn compute_syndromes(_lattice: BaseLattice<'clock, 'aut_id>) -> () {
+        todo!()
+    } 
+    fn apply_corrections(_lattice: BaseLattice<'clock, 'aut_id>) -> () {
+        todo!()
+    }
+    fn apply_random_error(_lattice: BaseLattice<'clock, 'aut_id>) -> () {
+        todo!()
+    }  
+    fn update_automata(_lattice: BaseLattice<'clock, 'aut_id>) -> () {
+        todo!()
+    }
+    // This will include the methods for modifying count_signal, flip_signal, and their
     // new variants
 }
 
 
-pub enum Edge<'automata_ref> {
-    Primary(LatticeEdge<'automata_ref>),
-    Dual(LatticeEdge<'automata_ref>),
+pub enum Edge<'aut_id> {
+    Primary(LatticeEdge<'aut_id>),
+    Dual(LatticeEdge<'aut_id>),
 }
 
-impl<'automata_ref> Edge<'automata_ref> {
-    pub fn new_primary(lattice_edge: LatticeEdge<'automata_ref>) -> Self {
+impl<'aut_id> Edge<'aut_id> {
+    pub fn new_primary(lattice_edge: LatticeEdge<'aut_id>) -> Self {
         Edge::Primary(lattice_edge)
     }
 
-    pub fn new_dual(lattice_edge: LatticeEdge<'automata_ref>) -> Self {
+    pub fn new_dual(lattice_edge: LatticeEdge<'aut_id>) -> Self {
         Edge::Dual(lattice_edge)
     }
 }
 
 
-pub struct LatticeEdge<'automata_ref> {
-    automata: (&'automata_ref AutomatonId, &'automata_ref AutomatonId),
+pub struct LatticeEdge<'aut_id> {
+    automata: (&'aut_id AutomatonId, &'aut_id AutomatonId),
     qubit: Option<QubitKey>,
 }
 
-impl<'automata_ref> LatticeEdge<'automata_ref> {
+impl<'aut_id> LatticeEdge<'aut_id> {
     // Is there much use to this since it is just a wrapper over making a new LatticeEdge without
     // any defaults?
-    pub fn new(aut_1: &'automata_ref AutomatonId, aut_2: &'automata_ref AutomatonId, qubit: Option<QubitKey>) -> Self {
+    pub fn new(aut_1: &'aut_id AutomatonId, aut_2: &'aut_id AutomatonId, qubit: Option<QubitKey>) -> Self {
         Self {
-            aut_1,
-            aut_2,
+            automata: (aut_1, aut_2),
             qubit
         }
     }
