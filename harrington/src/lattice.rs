@@ -1,6 +1,7 @@
 use crate::automaton::{Automaton, Point};
 use slotmap::SlotMap;
 use std::collections::HashMap;
+use crate::qubit;
 
 pub trait Lattice<'lat_id, 'lat> {
     // TODO: add to this trait, or perhaps just keep it as a state marker
@@ -94,34 +95,38 @@ impl<'clock, 'lat_id, 'aut_id> LatticeManager<'clock, 'lat_id, 'aut_id> {
 
 
     // There should only be one of these
-    pub fn _create_top_lattice(&mut self) {
-        todo!()
-        // let id = self.insert_lattice_to_store(
-        //     TopLattice::new() 
-        // );
+    //Creates all of the middle lattices
+    //Added point for easily assigning neighbors, impossible to assign neighbors before all lattices created but then 
+    //no easy way to order them all
+    //Instead can order them with Points, and use those to figure out neighors in a seperate method
+    pub fn create_top_lattice (&mut self) {
+        let id = self.top_store.insert(TopLattice::new(&self.clock));
+        for i in 0.. self.colony_size{
+            let side: u32 = ((self.colony_size as f64).sqrt() as u32);
+            let middle_cord: Point = (((i%side) as i32),((i/side) as i32));
+            let middle_id = self._create_middle_lattice(&id, middle_cord);
+            self.top_store[id].add_colony(&middle_id);
+        }
     }
     
-    // Example method for building new lattice
-    pub fn _create_middle_lattice(&mut self, _supercolony: LatticeId) -> LatticeId {
-        todo!()
-        // Adds the new lattice to the LatticeManager
-        // Note that I think id is assigned the valued given by vacant_key()
-        // let id = MiddleLattice::insert_lattice_to_store(
-        //     MiddleLattice::new(store.vacant_key()),
-        //     &mut self, 
-        // );
-        // // Adds the new lattice as a child colony of the given supercolony
-        // self.store[_supercolony].colonies.push(id);
-        // id
+    // Create middle Lattices
+    //Also still need to assign neigbors
+    pub fn _create_middle_lattice(&mut self, _supercolony: &LatticeId, point: Point) -> LatticeId{
+        let id = self.mid_store.insert(MiddleLattice::new(&self.clock,_supercolony,point));
+        for i in 0.. self.colony_size{
+            let side: u32 = ((self.colony_size as f64).sqrt() as u32);
+            let lower_cord: Point = (((i%side) as i32),((i/side) as i32));
+            let base_id = self._create_base_lattice(id, lower_cord);
+            self.mid_store[id].add_colony(&base_id);
+        }
+        id
     }
 
-    pub fn _create_base_lattice(&mut self, _supercolony: LatticeId) -> LatticeId {
-        todo!()
-        // let id = self.insert_lattice_to_store(
-        //     BaseLattice::new(store.vacant_key()) 
-        // );
-        // BaseLattice::get_lattice_from_store(_supercolony).colonies.push(id);
-        // id
+    //Create base lattice
+    //Still need to assign neighbors
+    pub fn _create_base_lattice(&mut self, _supercolony: LatticeId, point: Point) -> LatticeId {
+        let id = self.base_store.insert(BaseLattice::new(&self.clock,_supercolony,point));
+        id
     }
 
 
@@ -208,7 +213,7 @@ pub struct MiddleLattice<'clock, 'lat_id> {
     age: &'clock u32,
     supercolony: &'lat_id LatticeId,
     colonies: Vec<&'lat_id LatticeId>,
-
+    coord: Point, //Need a point coord to figure out direct neighbors for harrington rules
     count_signal: [bool; 8], 
     new_count_signal: [bool; 8],
     flip_signal: [bool; 8],
@@ -217,20 +222,22 @@ pub struct MiddleLattice<'clock, 'lat_id> {
     //Think we need list of neighbors for implementing higher level harrington rules easily
     //Could make specific higher level 'edge' objects to link these but we don't need qubit info stored btw 
     //higher level colonies
-    neighbor_colonies: [&'lat_id LatticeId; 8],
+    neighbor_colonies: Vec<&'lat_id LatticeId>,
 }
 
 impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
-    pub fn new(age: &'clock u32, supercolony: &'lat_id LatticeId, neighbors: [&'lat_id LatticeId; 8]) -> Self {
+    pub fn new(age: &'clock u32, supercolony: &'lat_id LatticeId, point: Point) -> Self {
         Self {
             age,
             supercolony,
             colonies: Vec::new(),
+            coord: point,
             count_signal: [false; 8],
             new_count_signal: [false; 8],
             flip_signal: [false; 8],
             new_flip_signal: [false; 8],
-            neighbor_colonies: neighbors
+            neighbor_colonies: Vec::new()
+
         }
     }
 
@@ -242,6 +249,9 @@ impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
         if let Some(index) = self.colonies.iter().position(|colony| *colony == id) {
             self.colonies.remove(index);
         }
+    }
+    pub fn assign_neighbors(&mut self, neighbors: [&'lat_id LatticeId; 8] ){
+        todo!()
     }
 }
 
@@ -282,27 +292,28 @@ pub struct BaseLattice<'clock, 'aut_id> {
     // The Points are indexed with respect to the individual BaseLattice
     primary: HashMap<Point, &'aut_id AutomatonId>,
     dual: HashMap<Point, &'aut_id AutomatonId>,
-
+    coord: Point,
     count_signal: [bool; 8], 
     new_count_signal: [bool; 8],
     flip_signal: [bool; 8],
     new_flip_signal: [bool; 8],
-    neighbor_colonies: [LatticeId; 8],
+    neighbor_colonies: Vec<LatticeId>,
 }
 
 impl <'clock, 'aut_id>BaseLattice<'clock, 'aut_id> {
-    pub fn new(age: &'clock u32, supercolony: LatticeId, neighbors: [LatticeId; 8]) -> Self {
+    pub fn new(age: &'clock u32, supercolony: LatticeId, point: Point) -> Self {
         Self {
             age,
             supercolony,
             primary: HashMap::new(),
             dual: HashMap::new(),
 
+            coord: point,
             count_signal: [false; 8],
             new_count_signal: [false; 8],
             flip_signal: [false; 8],
             new_flip_signal: [false; 8],
-            neighbor_colonies: neighbors
+            neighbor_colonies: Vec::new()
         }
     }
 
@@ -313,6 +324,9 @@ impl <'clock, 'aut_id>BaseLattice<'clock, 'aut_id> {
     pub fn add_dual_point(&mut self, point: Point, aut: &'aut_id AutomatonId) {
         self.dual.insert(point, aut);
     }
+    pub fn assign_neighbors(&mut self, neighbors: [&LatticeId; 8] ){
+        todo!()
+    }
 }
 
 impl<'clock, 'aut_id, 'lat_id, 'lat> Lattice<'lat_id, 'lat> for BaseLattice<'clock, 'aut_id> {
@@ -322,6 +336,7 @@ impl<'clock, 'aut_id, 'lat_id, 'lat> Lattice<'lat_id, 'lat> for BaseLattice<'clo
     fn get_lattice_from_store(self, _lattice_manager: &mut LatticeManager) -> &'lat Self {
         todo!()
     }
+    
 }
 
 impl <'clock, 'aut_id, 'lat_id, 'lat>HarringtonRules<'lat_id, 'lat, BaseLattice<'clock, 'aut_id>> for BaseLattice<'clock, 'aut_id> {

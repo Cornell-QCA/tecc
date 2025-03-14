@@ -33,7 +33,7 @@ impl<'clock> Automaton<'clock> {
 
     // access the hashmap in LatticeManager
     pub fn measure_syndrome() -> bool {
-        todo!();
+        todo!()
     }
     
     pub fn apply_star() {
