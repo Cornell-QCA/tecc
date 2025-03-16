@@ -2,6 +2,7 @@
 members = [
     "lattice",
     "harrington",
+    "driver",
 ]
 resolver = "2"
 
@@ -14,6 +15,7 @@ rust-version = "1.85.0"
 
 [workspace.dependencies]
 lattice = { path = "lattice" }
+harrington = { path = "harrington" }
 
 ndarray = {version = "0.16.1", features = ["rayon"]}
 nalgebra = "0.33.2"
