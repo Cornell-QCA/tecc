@@ -58,7 +58,7 @@ pub struct LatticeManager<'clock, 'lat_id, 'aut_id> {
 
 // TODO: I now have the LatticeManager owning everything, to get around boundaries between
 // BaseLattice's.
-impl<'lat_man, 'clock, 'lat_id, 'aut_id> LatticeManager<'clock, 'lat_id, 'aut_id> {
+impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 'lat_id, 'aut_id> {
     pub fn new(
         colony_size: u32,
         colony_degree: u32,
@@ -97,7 +97,7 @@ impl<'lat_man, 'clock, 'lat_id, 'aut_id> LatticeManager<'clock, 'lat_id, 'aut_id
     //no easy way to order them all
     //Instead can order them with Points, and use those to figure out neighors in a seperate method
     pub fn create_top_lattice(&'lat_man mut self) {
-        let id: &'lat_id LatticeId = self.top_store.insert(TopLattice::new(&mut self.clock));
+        let id: &'lat_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
         let side: u32 = (self.colony_size as f64).sqrt() as u32;
         for i in 0..self.colony_size {
             let middle_cord: Point = (((i % side) as i32), ((i / side) as i32));
@@ -110,7 +110,7 @@ impl<'lat_man, 'clock, 'lat_id, 'aut_id> LatticeManager<'clock, 'lat_id, 'aut_id
 
     // Create middle Lattices
     //Also still need to assign neigbors
-    pub fn _create_middle_lattice<'a>(&'a mut self, supercolony: &'lat_id LatticeId, point: Point) -> LatticeId {
+    pub fn _create_middle_lattice<'a: 'clock>(&'a mut self, supercolony: &'lat_id LatticeId, point: Point) -> LatticeId {
         let id = self
             .mid_store
             .insert(MiddleLattice::new(&self.clock, supercolony, point));
