@@ -97,17 +97,31 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
     //no easy way to order them all
     //Instead can order them with Points, and use those to figure out neighors in a seperate method
     pub fn create_top_lattice(&'lat_man mut self) {
-        let id: &'lat_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
+        // create top lattice
+        let top_id: &'aut_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
+
         let side: u32 = (self.colony_size as f64).sqrt() as u32;
+        let mut top_lattice = self.top_store[*top_id];
+        // create middle lattices
         for i in 0..self.colony_size {
             let middle_cord: Point = (((i % side) as i32), ((i / side) as i32));
-            let middle_id = self._create_middle_lattice(id, middle_cord);
-            self.top_store[*id].add_colony(&middle_id);
-            self.top_store[*id].add_colonymap(middle_cord, middle_id);
-        }
-        self.top_store[*id].assign_neighbors(side, self);
-    }
+            // TODO: does the create_middle_lattice add middle_id to the mid_store? If not, what
+            // owns middle_id?
+            let middle_id = self._create_middle_lattice(top_id, middle_cord);
 
+            // update top lattice
+            top_lattice.add_colony(middle_id);
+            top_lattice.add_colonymap(middle_cord, middle_id);
+        }
+
+        // assign neighbors to the top lattice
+        top_lattice.assign_neighbors(side, self);
+    }
+//========================================
+    
+
+
+    // =================================
     // Create middle Lattices
     //Also still need to assign neigbors
     pub fn _create_middle_lattice<'a: 'clock>(&'a mut self, supercolony: &'lat_id LatticeId, point: Point) -> LatticeId {
