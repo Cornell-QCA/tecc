@@ -16,7 +16,7 @@ pub enum Syndrome {
 
 #[derive(Clone, Debug)]
 pub struct Automaton<'clock> {
-    age: &'clock u32, // local copy updated 
+    age: &'clock u32, // local copy updated
     address: Point,
     syndromes: [bool; 9],
 }
@@ -27,7 +27,7 @@ impl<'clock> Automaton<'clock> {
         Self {
             age,
             address,
-            syndromes: [false; 9]
+            syndromes: [false; 9],
         }
     }
 
@@ -35,16 +35,16 @@ impl<'clock> Automaton<'clock> {
     pub fn measure_syndrome() -> bool {
         todo!()
     }
-    
+
     pub fn apply_star() {
-        todo!();
+        todo!()
     }
 
     pub fn apply_plaquette() {
-        todo!();
+        todo!()
     }
 
     pub fn apply_random_error() {
-        todo!();
+        todo!()
     }
 }

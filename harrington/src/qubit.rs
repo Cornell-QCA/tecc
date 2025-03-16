@@ -1,14 +1,14 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Qubit {
     bit: bool,
-    spin: bool
+    spin: bool,
 }
 
 impl Qubit {
     pub fn new() -> Self {
         Self {
             bit: false,
-            spin: false
+            spin: false,
         }
     }
 
