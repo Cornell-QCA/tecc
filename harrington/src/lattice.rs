@@ -97,7 +97,7 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
     //no easy way to order them all
     //Instead can order them with Points, and use those to figure out neighors in a seperate method
     pub fn create_top_lattice(&'lat_man mut self) {
-        let id: &'lat_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
+        let id: &'aut_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
         let side: u32 = (self.colony_size as f64).sqrt() as u32;
         for i in 0..self.colony_size {
             let middle_cord: Point = (((i % side) as i32), ((i / side) as i32));
@@ -106,6 +106,9 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
             self.top_store[*id].add_colonymap(middle_cord, middle_id);
         }
         self.top_store[*id].assign_neighbors(side, self);
+        for (k,midlat) in self.mid_store{
+            midlat.assign_neighbors(side,self);
+        }
     }
 
     // Create middle Lattices
@@ -119,6 +122,7 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
             let lower_cord: Point = (((i % side) as i32), ((i / side) as i32));
             let base_id = self._create_base_lattice(id, lower_cord);
             self.mid_store[id].add_colony(&base_id);
+            self.mid_store[id].add_colonymap(lower_cord,base_id);
         }
         id
     }
@@ -195,15 +199,15 @@ impl<'clock, 'lat_id> TopLattice<'clock, 'lat_id> {
                 for k in -1..2 {
                     for l in -1..2 {
                         let mut current_neighbor_point =
-                            ((current_point.0 + k), (current_point.0 + l));
-                        if (current_neighbor_point.0 + k) < 0 {
+                            ((current_point.0 + k), (current_point.1 + l));
+                        if (current_neighbor_point.0) < 0 {
                             current_neighbor_point.0 += dimension as i32;
-                        } else if (current_neighbor_point.0 + k) > (dimension as i32 - 1) {
+                        } else if (current_neighbor_point.0) > (dimension as i32 - 1) {
                             current_neighbor_point.0 -= dimension as i32;
                         }
-                        if (current_neighbor_point.1 + l) < 0 {
+                        if (current_neighbor_point.1) < 0 {
                             current_neighbor_point.1 += dimension as i32;
-                        } else if (current_neighbor_point.1 + l) > (dimension as i32 - 1) {
+                        } else if (current_neighbor_point.1) > (dimension as i32 - 1) {
                             current_neighbor_point.1 -= dimension as i32;
                         }
                         current_neighbors[counter] = self
@@ -213,7 +217,7 @@ impl<'clock, 'lat_id> TopLattice<'clock, 'lat_id> {
                         counter += 1;
                     }
                 }
-                current_subcolony.assign_neighbors(current_neighbors);
+                current_subcolony.set_neighbors(current_neighbors);
             }
         }
     }
@@ -256,11 +260,12 @@ pub struct MiddleLattice<'clock, 'lat_id> {
     new_count_signal: [bool; 8],
     flip_signal: [bool; 8],
     new_flip_signal: [bool; 8],
-
+    colony_neighbor_map: HashMap<Point, LatticeId>,
     //Think we need list of neighbors for implementing higher level harrington rules easily
     //Could make specific higher level 'edge' objects to link these but we don't need qubit info stored btw
     //higher level colonies
     neighbor_colonies: Vec<&'lat_id LatticeId>,
+    
 }
 
 impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
@@ -274,7 +279,9 @@ impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
             new_count_signal: [false; 8],
             flip_signal: [false; 8],
             new_flip_signal: [false; 8],
+            colony_neighbor_map: HashMap::new(),
             neighbor_colonies: Vec::new(),
+
         }
     }
 
@@ -287,9 +294,52 @@ impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
             self.colonies.remove(index);
         }
     }
-    pub fn assign_neighbors(&mut self, neighbors: [&'lat_id LatticeId; 8]) {
+    pub fn add_colonymap(&mut self, point: Point, id: LatticeId) {
+        self.colony_neighbor_map.insert(point, id);
+    }
+    pub fn set_neighbors(&mut self, neighbors: [&'lat_id LatticeId; 8]) {
         for neighbor in neighbors {
             self.neighbor_colonies.push(neighbor);
+        }
+    }
+    pub fn assign_neighbors<'a>(&'a self, dimension: u32, manager: &mut LatticeManager<'a, 'a, 'a>) {
+        for i in 0..dimension {
+            for j in 0..dimension {
+                let mut current_neighbors: [&'a LatticeId; 8] = [&Default::default(); 8];
+                let current_point = ((i as i32), (j as i32));
+                let current_subcolony_id: &LatticeId =
+                    self.colony_neighbor_map.get(&current_point).unwrap();
+                let current_subcolony = &mut manager.mid_store[*current_subcolony_id];
+                let mut counter = 0;
+                for k in -1..2 {
+                    for l in -1..2 {
+                        let mut neighbor_baselat = self;
+                        let mut current_neighbor_point =
+                            ((current_point.0 + k), (current_point.1 + l));
+
+                        if (current_neighbor_point.0) < 0 {
+                            current_neighbor_point.0 += dimension as i32;
+                            neighbor_baselat = &manager.mid_store[*self.neighbor_colonies[counter]];
+                        } else if (current_neighbor_point.0) > (dimension as i32 - 1) {
+                            current_neighbor_point.0 -= dimension as i32;
+                            neighbor_baselat = &manager.mid_store[*self.neighbor_colonies[counter]];
+                        }
+                        if (current_neighbor_point.1) < 0 {
+                            current_neighbor_point.1 += dimension as i32;
+                            neighbor_baselat = &manager.mid_store[*self.neighbor_colonies[counter]];
+                        } else if (current_neighbor_point.1) > (dimension as i32 - 1) {
+                            current_neighbor_point.1 -= dimension as i32;
+                            neighbor_baselat = &manager.mid_store[*self.neighbor_colonies[counter]];
+                        }
+                        current_neighbors[counter] = neighbor_baselat
+                            .colony_neighbor_map
+                            .get(&current_neighbor_point)
+                            .unwrap();
+                        counter += 1;
+                    }
+                }
+                current_subcolony.assign_neighbors(current_neighbors);
+            }
         }
     }
 }
