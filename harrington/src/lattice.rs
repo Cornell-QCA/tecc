@@ -97,16 +97,33 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
     //no easy way to order them all
     //Instead can order them with Points, and use those to figure out neighors in a seperate method
     pub fn create_top_lattice(&'lat_man mut self) {
+        // Create a new lattice and add it to the store in the lattice manager. A reference to the
+        // LatticeId is assigned to `id`
         let id: &'aut_id LatticeId = &self.top_store.insert(TopLattice::new(&mut self.clock));
+
+        // compute the side length from the number of subcolonies the new colony/lattice will have
         let side: u32 = (self.colony_size as f64).sqrt() as u32;
+
+        // Get the center point of each subcolony and create a lattice for this point 
         for i in 0..self.colony_size {
             let middle_cord: Point = (((i % side) as i32), ((i / side) as i32));
             let middle_id = self._create_middle_lattice(id, middle_cord);
+
+            // Add the new lattice to the lattice_manager
             self.top_store[*id].add_colony(&middle_id);
             self.top_store[*id].add_colonymap(middle_cord, middle_id);
         }
+
+        // QUESTION: If we only ever create one toplattice, should this just be a field in the struct instead
+        // of a SlotMap?
         self.top_store[*id].assign_neighbors(side, self);
-        for (k,midlat) in self.mid_store{
+
+        // TODO: Midstore as of yet does not have any members, assuming we are populating the
+        // lattice_manager from the top down. 
+        // 
+        // QUESTION: Does this tell the new children lattices of the toplattice their locations in relation
+        // to each other?
+        for (k, midlat) in self.mid_store{
             midlat.assign_neighbors(side,self);
         }
     }
@@ -114,6 +131,7 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
     // Create middle Lattices
     //Also still need to assign neigbors
     pub fn _create_middle_lattice<'a: 'clock>(&'a mut self, supercolony: &'lat_id LatticeId, point: Point) -> LatticeId {
+        // TODO: Fix create_top_lattice first and then use that as a template for this
         let id = self
             .mid_store
             .insert(MiddleLattice::new(&self.clock, supercolony, point));
@@ -130,6 +148,7 @@ impl<'lat_man, 'clock, 'lat_id: 'clock, 'aut_id: 'clock> LatticeManager<'clock, 
     //Create base lattice
     //Still need to assign neighbors
     pub fn _create_base_lattice<'a: 'clock>(&'a mut self, supercolony: LatticeId, point: Point) -> LatticeId {
+        // TODO: Fix create_top_lattice first and then use that as a template for this
         let id = self
             .base_store
             .insert(BaseLattice::new(&self.clock, supercolony, point));
@@ -184,9 +203,12 @@ impl<'clock, 'lat_id> TopLattice<'clock, 'lat_id> {
             self.colonies.remove(index);
         }
     }
+
     pub fn add_colonymap(&mut self, point: Point, id: LatticeId) {
         self.colony_neighbor_map.insert(point, id);
     }
+
+    // TODO: Please comment this and make it easier to read (ie what is `dimension` (of what?))
     pub fn assign_neighbors<'a>(&'a self, dimension: u32, manager: &mut LatticeManager<'a, 'a, 'a>) {
         for i in 0..dimension {
             for j in 0..dimension {
@@ -297,6 +319,9 @@ impl<'clock, 'lat_id> MiddleLattice<'clock, 'lat_id> {
     pub fn add_colonymap(&mut self, point: Point, id: LatticeId) {
         self.colony_neighbor_map.insert(point, id);
     }
+
+    /// Given a MiddleLattice (self) and the LatticeIds of other MiddleLattices, add the LatticeIds to the
+    /// neighbor_colonies field of self
     pub fn set_neighbors(&mut self, neighbors: [&'lat_id LatticeId; 8]) {
         for neighbor in neighbors {
             self.neighbor_colonies.push(neighbor);
